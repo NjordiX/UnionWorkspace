@@ -40,24 +40,24 @@ namespace UWServer
             {
                 TcpClient client = Listener.AcceptTcpClient();
                 Clients.Add(client);
-                Process(client);
+                _ = Process(client);  // Таску пока нигде не храним (мб и не нужно будет)
             }
 
 
         }
 
-
-        private void Process(TcpClient client)  // Определяем поток передачи данных , получаем дату - отвечаем 
+        private async Task Process(TcpClient client) => await Task.Run(() => _Process(client));  // Асинхроночка
+        private void _Process(TcpClient client)  // Определяем поток передачи данных , получаем дату - отвечаем 
         {
-            NetworkStream stream = client.GetStream();
-            do
+            NetworkStream stream = client.GetStream();  
+            while(true)                                     //Обязательно нужно прикрутить условие выхода 
             {
                 byte [] buffer = new byte[4096];
                 StringBuilder builder = new();
 
                 do
                 {
-                    _ = stream.Read(buffer, 0, buffer.Length);
+                    _ = stream.Read(buffer, 0, buffer.Length);          // Количество читаемых байт не храним, но дискард на всякий пожарный поставил
                     builder.Append(Encoding.UTF8.GetString(buffer));
 
                 } while (stream.DataAvailable);
@@ -65,15 +65,16 @@ namespace UWServer
                 string message = builder.ToString();    //  Здесь будет обработчик полученной информации , пока посто выводить будем на консоль 
                 Console.WriteLine(message);
 
-
-                
-
-            } while (true);
+                string respone = "respone";                 // Тут ответ , пока тривиально , логику приверну позже 
+                buffer = Encoding.UTF8.GetBytes(respone);
+                stream.Write(buffer, 0, buffer.Length);
+            }
+            Stop(ref stream, CancellationToken.None);
 
         }
-        void Stop ()
+        void Stop (ref NetworkStream stream, CancellationToken token)  //Остановочка, мб через КанцелТокены
         {
-
+            stream.Close();
         }
 
 
